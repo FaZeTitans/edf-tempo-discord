@@ -34,11 +34,11 @@ COPY package*.json ./
 # Installer les dépendances
 RUN npm install
 
+# Télécharger Chrome explicitement via Puppeteer
+RUN npx puppeteer browsers install chrome
+
 # Copier le reste des fichiers de l'application
 COPY . .
-
-# Configuration pour Puppeteer (évite la redownloading de Chromium)
-ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 # Exposer les logs en stdout
 CMD ["node", "main.js"]
