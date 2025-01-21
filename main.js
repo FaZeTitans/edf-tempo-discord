@@ -13,7 +13,10 @@ if (!DISCORD_WEBHOOK) {
 }
 
 async function getDaysLeft() {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+        headless: true, // Mode headless (sans interface)
+        args: ['--no-sandbox', '--disable-setuid-sandbox'], // Ajout des arguments nécessaires
+    });
     const page = await browser.newPage();
 
     await page.goto(EDF_CALENDAR_URL);
@@ -22,17 +25,22 @@ async function getDaysLeft() {
         const blue = document.querySelector('#a11y-blue-days span');
         const white = document.querySelector('#a11y-white-days span');
         const red = document.querySelector('#a11y-red-days span');
-        return blue && blue.innerText !== '/' &&
-               white && white.innerText !== '/' &&
-               red && red.innerText !== '/';
+        return (
+            blue &&
+            blue.innerText !== '/' &&
+            white &&
+            white.innerText !== '/' &&
+            red &&
+            red.innerText !== '/'
+        );
     });
 
     const data = await page.evaluate(() => {
         return [
             document.querySelector('#a11y-blue-days span').innerText,
             document.querySelector('#a11y-white-days span').innerText,
-            document.querySelector('#a11y-red-days span').innerText
-        ]
+            document.querySelector('#a11y-red-days span').innerText,
+        ];
     });
 
     await browser.close();
@@ -40,7 +48,7 @@ async function getDaysLeft() {
     return {
         blue: data[0],
         white: data[1],
-        red: data[2]
+        red: data[2],
     };
 }
 
@@ -75,22 +83,22 @@ function getPrices(code) {
         case 1:
             return {
                 hp: 16.09,
-                hc: 12.96
+                hc: 12.96,
             };
         case 2:
             return {
                 hp: 18.94,
-                hc: 14.86
+                hc: 14.86,
             };
         case 3:
             return {
                 hp: 75.62,
-                hc: 15.68
+                hc: 15.68,
             };
         default:
             return {
                 hp: -1,
-                hc: -1
+                hc: -1,
             };
     }
 }
@@ -98,21 +106,23 @@ function getPrices(code) {
 function getColor(code) {
     switch (code) {
         case 1:
-            return 0x0000FF;
+            return 0x0000ff;
         case 2:
-            return 0xFFFFFF;
+            return 0xffffff;
         case 3:
-            return 0xFF0000;
+            return 0xff0000;
         default:
             return 0x000000;
     }
 }
 
 async function fetchAndSendData() {
-    const debugDate = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
-	try {
-		const response = await axios.get(API_URL);
-		const data = response.data;
+    const debugDate = new Date().toLocaleString('fr-FR', {
+        timeZone: 'Europe/Paris',
+    });
+    try {
+        const response = await axios.get(API_URL);
+        const data = response.data;
 
         const date = data.dateJour.split('-').reverse().join('/');
 
@@ -121,27 +131,46 @@ async function fetchAndSendData() {
 
         const daysLeft = await getDaysLeft();
 
-		await axios.post(DISCORD_WEBHOOK,
-			{
-                "content": null,
-                "embeds": [
-                  {
-                    "title": `EDF Tempo du ${date}`,
-                    "description": `**${getEmoji(code)} ${getColorName(code)}**\n\n**Tarif :**\n- Heures Pleines : ${prices.hp}\n- Heures Creuses : ${prices.hc}\n\n**Restants :**\n- Rouge : ${daysLeft.red}\n- Blanc : ${daysLeft.white}\n- Bleu: ${daysLeft.blue}`,
-                    "url": "https://particulier.edf.fr/fr/accueil/gestion-contrat/options/tempo.html#/",
-                    "color": getColor(code),
-                  }
-                ],
-                "attachments": []
-              }
-		);
+        await axios.post(DISCORD_WEBHOOK, {
+            content: null,
+            embeds: [
+                {
+                    title: `EDF Tempo du ${date}`,
+                    description: `**${getEmoji(code)} ${getColorName(
+                        code
+                    )}**\n\n**Tarif :**\n- Heures Pleines : ${
+                        prices.hp
+                    }\n- Heures Creuses : ${
+                        prices.hc
+                    }\n\n**Restants :**\n- Rouge : ${daysLeft.red}\n- Blanc : ${
+                        daysLeft.white
+                    }\n- Bleu: ${daysLeft.blue}`,
+                    url: 'https://particulier.edf.fr/fr/accueil/gestion-contrat/options/tempo.html#/',
+                    color: getColor(code),
+                },
+            ],
+            attachments: [],
+        });
 
-		console.info(`${date} - Données envoyées à Discord avec succès.`);
-	} catch (error) {
-		console.error(`${debugDate} - Erreur lors de la récupération ou l’envoi des données :`, error);
-	}
+        console.info(`${date} - Données envoyées à Discord avec succès.`);
+    } catch (error) {
+        console.error(
+            `${debugDate} - Erreur lors de la récupération ou l’envoi des données :`,
+            error
+        );
+    }
 }
 
 // Planification quotidienne à 12h
 schedule.scheduleJob('0 12 * * *', fetchAndSendData);
 console.info('Script initialisé avec succès.');
+
+if (process.env.RUN_ON_STARTUP === 'true') {
+    console.log(
+        'Variable RUN_ON_STARTUP détectée. Exécution immédiate (debug)'
+    );
+
+    fetchAndSendData().catch((error) =>
+        console.error("Erreur lors de l'exécution immédiate :", error)
+    );
+}

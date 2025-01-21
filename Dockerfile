@@ -48,3 +48,4 @@ RUN npm install puppeteer@latest
 
 # Exemple pour documenter la variable d'environnement
 ENV DISCORD_WEBHOOK="<Webhook Discord>"
+ENV RUN_ON_STARTUP="false"

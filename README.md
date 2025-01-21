@@ -41,8 +41,26 @@ npm install
 
 ### 3. Configuration
 Ajoutez un fichier `.env` à la racine pour gérer les variables sensibles :
+
+- `DISCORD_WEBHOOK` (requis) :
+  - Webhook Discord où les messages doivent être envoyés.
+
+#### Exemple :
 ```
 DISCORD_WEBHOOK=https://discord.com/api/webhooks/... 
+```
+
+---
+
+- `RUN_ON_STARTUP` (optionnel) : 
+  - Si définie sur `true`, le script s'exécutera immédiatement après le démarrage (utile pour les tests).
+  - Valeur par défaut : `false`.
+
+#### Exemple :
+```bash
+docker run -d \
+  -e RUN_ON_STARTUP=true \
+  edf-tempo-scheduler
 ```
 
 ---
